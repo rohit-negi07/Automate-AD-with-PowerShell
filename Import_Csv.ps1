@@ -57,13 +57,11 @@ function Compare-Users{
         [Parameter()]
         [string]$Delimiter=","
     )
+    $CSVUsers=Get-EmployeeCsv -FilePath $FilePath -Delimiter $Delimiter -SyncFieldMap $SyncFieldMap
+    $ADUsers=Get-EmployeesFromAD -SyncFieldMap $SyncFieldMap -UniqueId $UniqueId -Domain $Domain
+
+    Compare-Object -ReferenceObject $ADUsers -DifferenceObject $CSVUsers -Property $UniqueId -IncludeEqual
 }
-
-$CSVUsers=Get-EmployeeCsv -FilePath $FilePath -Delimiter $Delimiter -SyncFieldMap $SyncFieldMap
-$ADUsers=Get-EmployeesFromAD -SyncFieldMap $SyncFieldMap -UniqueId $UniqueId -Domain $Domain
-
-Compare-Object -ReferenceObject $ADUsers -DifferenceObject $CSVUsers -Property $UniqueId -IncludeEqual
-
 #Created the variable Mapping
 $SyncFieldMap=@{
     EmployeeID="EmployeeID"
@@ -79,4 +77,5 @@ $Delimiter=","
 $Domain="luffy.local"
 
 #Comparing Script
+
 Compare-Users -SyncFieldMap $SyncFieldMap -FilePath $FilePath -UniqueId $UniqueId -Delimiter $Delimiter -Domain $Domain
