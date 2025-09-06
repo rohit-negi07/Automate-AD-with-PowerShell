@@ -62,7 +62,43 @@ function Compare-Users{
 
     Compare-Object -ReferenceObject $ADUsers -DifferenceObject $CSVUsers -Property $UniqueId -IncludeEqual
 }
-#Created the variable Mapping
+
+#4-Get the new, synced and removed users in AD
+function Get-UserSyncData{
+    [CmdletBinding()]
+    Param(
+        [Parameter(Mandatory)]
+        [hashtable]$SyncFieldMap,
+        [Parameter(Mandatory)]
+        [string]$FilePath,
+        [Parameter(Mandatory)]
+        [string]$UniqueId,
+        [Parameter(Mandatory)]
+        [string]$Domain,
+        [Parameter()]
+        [string]$Delimiter=","
+    )
+    try{
+        $CompareData=Compare-Users -SyncFieldMap $SyncFieldMap -FilePath $FilePath -UniqueId $UniqueId -Delimiter $Delimiter -Domain $Domain
+        $NewUsersID=$CompareData | where SideIndicator -eq "=>"
+        $SyncedUsersID=$CompareData | where SideIndicator -eq "=="
+        $RemovedUsersID=$CompareData | where SideIndicator -eq "<="
+
+        $NewUsers=Get-EmployeeCsv -FilePath $FilePath -Delimiter $Delimiter -SyncFieldMap $SyncFieldMap | where $UniqueId -In $NewUsersID.$UniqueId
+        $SyncedUsers=Get-EmployeeCsv -FilePath $FilePath -Delimiter $Delimiter -SyncFieldMap $SyncFieldMap | where $UniqueId -In $SyncedUsersID.$UniqueId
+        $RemovedUsers=Get-EmployeesFromAD -SyncFieldMap $SyncFieldMap -Domain $Domain -UniqueId $UniqueId | where $UniqueId -In $RemovedUsersID.$UniqueId
+
+        @{
+            New=$NewUsers
+            Synced=$SyncedUsers
+            Removed=$RemovedUsers
+        }
+    }catch{
+        Write-Error -Message $_.Exception.Message
+    }
+}
+
+#Created the variable Mapping(Configuration)
 $SyncFieldMap=@{
     EmployeeID="EmployeeID"
     FirstName="GivenName"
@@ -76,6 +112,5 @@ $FilePath="C:\EmployeeData.txt"
 $Delimiter=","
 $Domain="luffy.local"
 
-#Comparing Script
-
-Compare-Users -SyncFieldMap $SyncFieldMap -FilePath $FilePath -UniqueId $UniqueId -Delimiter $Delimiter -Domain $Domain
+#Get the NewUsers, SyncedUsers and RemovedUsers
+$UserData=Get-UserSyncData -SyncFieldMap $SyncFieldMap -FilePath $FilePath -UniqueId $UniqueId -Domain $Domain -Delimiter $Delimiter
